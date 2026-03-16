@@ -55,3 +55,4 @@ body {
 .fade-up-2 { animation-delay: 0.10s; }
 .fade-up-3 { animation-delay: 0.15s; }
 .fade-up-4 { animation-delay: 0.20s; }
+.hide-scrollbar::-webkit-scrollbar { display: none; }

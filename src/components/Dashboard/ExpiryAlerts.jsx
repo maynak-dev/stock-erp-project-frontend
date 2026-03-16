@@ -59,12 +59,12 @@ export default function ExpiryAlerts() {
       </div>
 
       {/* Scrollable list — max 5 rows visible, then scroll */}
-      <div style={{
+      <div className="hide-scrollbar" style={{
         overflowY:'auto', maxHeight:'270px',
         padding:'6px 10px',
-        // subtle custom scrollbar
-        scrollbarWidth:'thin',
-        scrollbarColor:'var(--border2) transparent',
+        // hide scrollbar visually but keep scroll functional
+        scrollbarWidth:'none',      // Firefox
+        msOverflowStyle:'none',     // IE/Edge
       }}>
         {alerts.length === 0 ? (
           <div style={{ padding:'40px 0', textAlign:'center' }}>
