@@ -1,0 +1,30 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Debug Import</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module">
+      // Test importing your page components directly
+      import UsersPage from "/src/pages/UsersPage.jsx";
+      import ReportsPage from "/src/pages/ReportsPage.jsx";
+      import ReturnsPage from "/src/pages/ReturnsPage.jsx";
+      import LocationsPage from "/src/pages/LocationsPage.jsx";
+      import ShopsPage from "/src/pages/ShopsPage.jsx";
+      import ProductsPage from "/src/pages/ProductsPage.jsx";
+
+      console.log("UsersPage:", UsersPage);
+      console.log("ReportsPage:", ReportsPage);
+      console.log("ReturnsPage:", ReturnsPage);
+      console.log("LocationsPage:", LocationsPage);
+      console.log("ShopsPage:", ShopsPage);
+      console.log("ProductsPage:", ProductsPage);
+
+      // If any of these log 'undefined', that's your problematic file
+      document.getElementById("root").innerHTML =
+        "<h1>Check console for results</h1>";
+    </script>
+  </body>
+</html>
