@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { PencilIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline';
 import AddProductModal from './AddProductModal';
 import EditProductModal from './EditProductModal';
+import DeleteConfirmModal from '../DeleteConfirmModal';
 import { useProducts } from '../../hooks/useProducts';
 import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
@@ -25,13 +26,16 @@ export default function ProductList() {
   const { products, loading, error, deleteProduct, refetch } = useProducts();
   const { user } = useAuth();
   const canEdit = ['SUPER_ADMIN','COMPANY_ADMIN'].includes(user?.role);
-  const [showAdd,  setShowAdd]  = useState(false);
-  const [editItem, setEditItem] = useState(null);
+  const [showAdd,    setShowAdd]    = useState(false);
+  const [editItem,   setEditItem]   = useState(null);
+  const [deleteItem, setDeleteItem] = useState(null);
+  const [deleting,   setDeleting]   = useState(false);
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Delete this product?')) return;
-    try { await deleteProduct(id); toast.success('Product deleted'); }
+  const handleDelete = async () => {
+    setDeleting(true);
+    try { await deleteProduct(deleteItem.id); toast.success('Product deleted'); refetch(); setDeleteItem(null); }
     catch { toast.error('Failed to delete'); }
+    finally { setDeleting(false); }
   };
 
   if (loading) return <div style={T.stateBox}>Loading…</div>;
@@ -43,22 +47,17 @@ export default function ProductList() {
         <div><h1 style={T.pageTitle}>Products</h1><p style={T.pageSub}>{products.length} products</p></div>
         {canEdit && (
           <button style={T.btnPrimary} onClick={() => setShowAdd(true)}
-            onMouseEnter={e => e.currentTarget.style.opacity='.88'}
-            onMouseLeave={e => e.currentTarget.style.opacity='1'}>
+            onMouseEnter={e => e.currentTarget.style.opacity='.88'} onMouseLeave={e => e.currentTarget.style.opacity='1'}>
             <PlusIcon style={{ width:14, height:14 }}/> Add Product
           </button>
         )}
       </div>
-
       <div style={T.tableCard}>
         <div className="table-scroll">
           <table style={{ width:'100%', borderCollapse:'collapse' }}>
             <thead><tr>
-              <th style={T.th}>Name</th>
-              <th style={T.th}>SKU</th>
-              <th style={T.th}>Price</th>
-              <th style={T.th}>Shelf Life</th>
-              <th style={T.th}>Company</th>
+              <th style={T.th}>Name</th><th style={T.th}>SKU</th><th style={T.th}>Price</th>
+              <th style={T.th}>Shelf Life</th><th style={T.th}>Company</th>
               {canEdit && <th style={T.thRight}>Actions</th>}
             </tr></thead>
             <tbody>
@@ -79,7 +78,7 @@ export default function ProductList() {
                           onMouseLeave={e => e.currentTarget.style.background='rgba(108,99,255,.1)'}>
                           <PencilIcon style={{ width:13, height:13 }}/>
                         </button>
-                        <button style={T.iconBtn('var(--rose)')} onClick={() => handleDelete(p.id)}
+                        <button style={T.iconBtn('var(--rose)')} onClick={() => setDeleteItem(p)}
                           onMouseEnter={e => e.currentTarget.style.background='rgba(255,90,126,.2)'}
                           onMouseLeave={e => e.currentTarget.style.background='rgba(255,90,126,.1)'}>
                           <TrashIcon style={{ width:13, height:13 }}/>
@@ -94,9 +93,10 @@ export default function ProductList() {
         </div>
         {products.length === 0 && <div style={T.stateBox}>No products found</div>}
       </div>
-
       <AddProductModal isOpen={showAdd} onClose={() => setShowAdd(false)} onSuccess={() => { refetch(); setShowAdd(false); }}/>
       <EditProductModal isOpen={!!editItem} onClose={() => setEditItem(null)} product={editItem} onSuccess={() => { refetch(); setEditItem(null); }}/>
+      <DeleteConfirmModal isOpen={!!deleteItem} onClose={() => setDeleteItem(null)} onConfirm={handleDelete} loading={deleting}
+        title="Delete Product" message={`Are you sure you want to delete "${deleteItem?.name}" (${deleteItem?.sku})? All stock entries for this product will also be removed.`}/>
     </div>
   );
 }

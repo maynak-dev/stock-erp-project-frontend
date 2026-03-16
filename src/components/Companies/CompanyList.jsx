@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { PencilIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline';
 import AddCompanyModal from './AddCompanyModal';
 import EditCompanyModal from './EditCompanyModal';
+import DeleteConfirmModal from '../DeleteConfirmModal';
 import { useCompanies } from '../../hooks/useCompanies';
 import toast from 'react-hot-toast';
 
@@ -22,13 +23,16 @@ const T = {
 
 export default function CompanyList() {
   const { companies, loading, error, deleteCompany, refetch } = useCompanies();
-  const [showAdd,  setShowAdd]  = useState(false);
-  const [editItem, setEditItem] = useState(null);
+  const [showAdd,    setShowAdd]    = useState(false);
+  const [editItem,   setEditItem]   = useState(null);
+  const [deleteItem, setDeleteItem] = useState(null);
+  const [deleting,   setDeleting]   = useState(false);
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Delete this company?')) return;
-    try { await deleteCompany(id); toast.success('Company deleted'); }
+  const handleDelete = async () => {
+    setDeleting(true);
+    try { await deleteCompany(deleteItem.id); toast.success('Company deleted'); refetch(); setDeleteItem(null); }
     catch { toast.error('Failed to delete'); }
+    finally { setDeleting(false); }
   };
 
   if (loading) return <div style={T.stateBox}>Loading…</div>;
@@ -39,8 +43,7 @@ export default function CompanyList() {
       <div className="page-top-bar" style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'20px' }}>
         <div><h1 style={T.pageTitle}>Companies</h1><p style={T.pageSub}>{companies.length} registered</p></div>
         <button style={T.btnPrimary} onClick={() => setShowAdd(true)}
-          onMouseEnter={e => e.currentTarget.style.opacity='.88'}
-          onMouseLeave={e => e.currentTarget.style.opacity='1'}>
+          onMouseEnter={e => e.currentTarget.style.opacity='.88'} onMouseLeave={e => e.currentTarget.style.opacity='1'}>
           <PlusIcon style={{ width:14, height:14 }}/> Add Company
         </button>
       </div>
@@ -49,10 +52,8 @@ export default function CompanyList() {
         <div className="table-scroll">
           <table style={{ width:'100%', borderCollapse:'collapse' }}>
             <thead><tr>
-              <th style={T.th}>Name</th>
-              <th style={T.th}>GST</th>
-              <th style={T.th}>Contact</th>
-              <th style={T.th}>Address</th>
+              <th style={T.th}>Name</th><th style={T.th}>GST</th>
+              <th style={T.th}>Contact</th><th style={T.th}>Address</th>
               <th style={T.thRight}>Actions</th>
             </tr></thead>
             <tbody>
@@ -71,7 +72,7 @@ export default function CompanyList() {
                         onMouseLeave={e => e.currentTarget.style.background='rgba(108,99,255,.1)'}>
                         <PencilIcon style={{ width:13, height:13 }}/>
                       </button>
-                      <button style={T.iconBtn('var(--rose)')} onClick={() => handleDelete(c.id)}
+                      <button style={T.iconBtn('var(--rose)')} onClick={() => setDeleteItem(c)}
                         onMouseEnter={e => e.currentTarget.style.background='rgba(255,90,126,.2)'}
                         onMouseLeave={e => e.currentTarget.style.background='rgba(255,90,126,.1)'}>
                         <TrashIcon style={{ width:13, height:13 }}/>
@@ -88,6 +89,11 @@ export default function CompanyList() {
 
       <AddCompanyModal isOpen={showAdd} onClose={() => setShowAdd(false)} onSuccess={() => { refetch(); setShowAdd(false); }}/>
       <EditCompanyModal isOpen={!!editItem} onClose={() => setEditItem(null)} company={editItem} onSuccess={() => { refetch(); setEditItem(null); }}/>
+      <DeleteConfirmModal
+        isOpen={!!deleteItem} onClose={() => setDeleteItem(null)} onConfirm={handleDelete} loading={deleting}
+        title="Delete Company"
+        message={`Are you sure you want to delete "${deleteItem?.name}"? All associated data will be permanently removed.`}
+      />
     </div>
   );
 }

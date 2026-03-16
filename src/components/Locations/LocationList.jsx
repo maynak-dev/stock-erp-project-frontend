@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { PencilIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline';
 import AddLocationModal from './AddLocationModal';
 import EditLocationModal from './EditLocationModal';
+import DeleteConfirmModal from '../DeleteConfirmModal';
 import { useLocations } from '../../hooks/useLocations';
 import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
@@ -25,13 +26,16 @@ export default function LocationList() {
   const { locations, loading, error, deleteLocation, refetch } = useLocations();
   const { user } = useAuth();
   const canEdit = ['SUPER_ADMIN','COMPANY_ADMIN'].includes(user?.role);
-  const [showAdd,  setShowAdd]  = useState(false);
-  const [editItem, setEditItem] = useState(null);
+  const [showAdd,    setShowAdd]    = useState(false);
+  const [editItem,   setEditItem]   = useState(null);
+  const [deleteItem, setDeleteItem] = useState(null);
+  const [deleting,   setDeleting]   = useState(false);
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Delete this location?')) return;
-    try { await deleteLocation(id); toast.success('Location deleted'); }
+  const handleDelete = async () => {
+    setDeleting(true);
+    try { await deleteLocation(deleteItem.id); toast.success('Location deleted'); refetch(); setDeleteItem(null); }
     catch { toast.error('Failed to delete'); }
+    finally { setDeleting(false); }
   };
 
   if (loading) return <div style={T.stateBox}>Loading…</div>;
@@ -43,20 +47,16 @@ export default function LocationList() {
         <div><h1 style={T.pageTitle}>Locations</h1><p style={T.pageSub}>{locations.length} locations</p></div>
         {canEdit && (
           <button style={T.btnPrimary} onClick={() => setShowAdd(true)}
-            onMouseEnter={e => e.currentTarget.style.opacity='.88'}
-            onMouseLeave={e => e.currentTarget.style.opacity='1'}>
+            onMouseEnter={e => e.currentTarget.style.opacity='.88'} onMouseLeave={e => e.currentTarget.style.opacity='1'}>
             <PlusIcon style={{ width:14, height:14 }}/> Add Location
           </button>
         )}
       </div>
-
       <div style={T.tableCard}>
         <div className="table-scroll">
           <table style={{ width:'100%', borderCollapse:'collapse' }}>
             <thead><tr>
-              <th style={T.th}>Name</th>
-              <th style={T.th}>Address</th>
-              <th style={T.th}>Company</th>
+              <th style={T.th}>Name</th><th style={T.th}>Address</th><th style={T.th}>Company</th>
               {canEdit && <th style={T.thRight}>Actions</th>}
             </tr></thead>
             <tbody>
@@ -75,7 +75,7 @@ export default function LocationList() {
                           onMouseLeave={e => e.currentTarget.style.background='rgba(108,99,255,.1)'}>
                           <PencilIcon style={{ width:13, height:13 }}/>
                         </button>
-                        <button style={T.iconBtn('var(--rose)')} onClick={() => handleDelete(loc.id)}
+                        <button style={T.iconBtn('var(--rose)')} onClick={() => setDeleteItem(loc)}
                           onMouseEnter={e => e.currentTarget.style.background='rgba(255,90,126,.2)'}
                           onMouseLeave={e => e.currentTarget.style.background='rgba(255,90,126,.1)'}>
                           <TrashIcon style={{ width:13, height:13 }}/>
@@ -90,9 +90,10 @@ export default function LocationList() {
         </div>
         {locations.length === 0 && <div style={T.stateBox}>No locations found</div>}
       </div>
-
       <AddLocationModal isOpen={showAdd} onClose={() => setShowAdd(false)} onSuccess={() => { refetch(); setShowAdd(false); }}/>
       <EditLocationModal isOpen={!!editItem} onClose={() => setEditItem(null)} location={editItem} onSuccess={() => { refetch(); setEditItem(null); }}/>
+      <DeleteConfirmModal isOpen={!!deleteItem} onClose={() => setDeleteItem(null)} onConfirm={handleDelete} loading={deleting}
+        title="Delete Location" message={`Are you sure you want to delete "${deleteItem?.name}"? All shops and stock under this location will also be removed.`}/>
     </div>
   );
 }

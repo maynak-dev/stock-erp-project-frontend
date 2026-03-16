@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { PencilIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline';
 import AddShopModal from './AddShopModal';
 import EditShopModal from './EditShopModal';
+import DeleteConfirmModal from '../DeleteConfirmModal';
 import { useShops } from '../../hooks/useShops';
 import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
@@ -25,13 +26,16 @@ export default function ShopList() {
   const { shops, loading, error, deleteShop, refetch } = useShops();
   const { user } = useAuth();
   const canEdit = ['SUPER_ADMIN','COMPANY_ADMIN','LOCATION_MANAGER'].includes(user?.role);
-  const [showAdd,  setShowAdd]  = useState(false);
-  const [editItem, setEditItem] = useState(null);
+  const [showAdd,    setShowAdd]    = useState(false);
+  const [editItem,   setEditItem]   = useState(null);
+  const [deleteItem, setDeleteItem] = useState(null);
+  const [deleting,   setDeleting]   = useState(false);
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Delete this shop?')) return;
-    try { await deleteShop(id); toast.success('Shop deleted'); }
+  const handleDelete = async () => {
+    setDeleting(true);
+    try { await deleteShop(deleteItem.id); toast.success('Shop deleted'); refetch(); setDeleteItem(null); }
     catch { toast.error('Failed to delete'); }
+    finally { setDeleting(false); }
   };
 
   if (loading) return <div style={T.stateBox}>Loading…</div>;
@@ -43,20 +47,16 @@ export default function ShopList() {
         <div><h1 style={T.pageTitle}>Shops</h1><p style={T.pageSub}>{shops.length} shops</p></div>
         {canEdit && (
           <button style={T.btnPrimary} onClick={() => setShowAdd(true)}
-            onMouseEnter={e => e.currentTarget.style.opacity='.88'}
-            onMouseLeave={e => e.currentTarget.style.opacity='1'}>
+            onMouseEnter={e => e.currentTarget.style.opacity='.88'} onMouseLeave={e => e.currentTarget.style.opacity='1'}>
             <PlusIcon style={{ width:14, height:14 }}/> Add Shop
           </button>
         )}
       </div>
-
       <div style={T.tableCard}>
         <div className="table-scroll">
           <table style={{ width:'100%', borderCollapse:'collapse' }}>
             <thead><tr>
-              <th style={T.th}>Name</th>
-              <th style={T.th}>Address</th>
-              <th style={T.th}>Location</th>
+              <th style={T.th}>Name</th><th style={T.th}>Address</th><th style={T.th}>Location</th>
               {canEdit && <th style={T.thRight}>Actions</th>}
             </tr></thead>
             <tbody>
@@ -75,7 +75,7 @@ export default function ShopList() {
                           onMouseLeave={e => e.currentTarget.style.background='rgba(108,99,255,.1)'}>
                           <PencilIcon style={{ width:13, height:13 }}/>
                         </button>
-                        <button style={T.iconBtn('var(--rose)')} onClick={() => handleDelete(shop.id)}
+                        <button style={T.iconBtn('var(--rose)')} onClick={() => setDeleteItem(shop)}
                           onMouseEnter={e => e.currentTarget.style.background='rgba(255,90,126,.2)'}
                           onMouseLeave={e => e.currentTarget.style.background='rgba(255,90,126,.1)'}>
                           <TrashIcon style={{ width:13, height:13 }}/>
@@ -90,9 +90,10 @@ export default function ShopList() {
         </div>
         {shops.length === 0 && <div style={T.stateBox}>No shops found</div>}
       </div>
-
       <AddShopModal isOpen={showAdd} onClose={() => setShowAdd(false)} onSuccess={() => { refetch(); setShowAdd(false); }}/>
       <EditShopModal isOpen={!!editItem} onClose={() => setEditItem(null)} shop={editItem} onSuccess={() => { refetch(); setEditItem(null); }}/>
+      <DeleteConfirmModal isOpen={!!deleteItem} onClose={() => setDeleteItem(null)} onConfirm={handleDelete} loading={deleting}
+        title="Delete Shop" message={`Are you sure you want to delete "${deleteItem?.name}"? This action cannot be undone.`}/>
     </div>
   );
 }
