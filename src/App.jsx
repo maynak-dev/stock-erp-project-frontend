@@ -22,26 +22,112 @@ function App() {
         <Toaster position="top-right" />
         <Routes>
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/" element={
-            <ProtectedRoute>
-              <Layout />
-            </ProtectedRoute>
-          }>
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <Layout />
+              </ProtectedRoute>
+            }
+          >
             <Route index element={<DashboardPage />} />
             <Route path="dashboard" element={<DashboardPage />} />
-            <Route path="companies" element={
-              <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'COMPANY_ADMIN']}>
-                <CompaniesPage />
-              </ProtectedRoute>
-            } />
-            <Route path="locations" element={<LocationsPage />} />
-            <Route path="shops" element={<ShopsPage />} />
-            <Route path="products" element={<ProductsPage />} />
-            <Route path="stock" element={<StockPage />} />
-            <Route path="expiry" element={<ExpiryPage />} />
-            <Route path="returns" element={<ReturnsPage />} />
-            <Route path="reports" element={<ReportsPage />} />
-            <Route path="users" element={<UsersPage />} />
+
+            {/* Companies – only SUPER_ADMIN and COMPANY_ADMIN */}
+            <Route
+              path="companies"
+              element={
+                <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'COMPANY_ADMIN']}>
+                  <CompaniesPage />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Locations – add LOCATION_MANAGER */}
+            <Route
+              path="locations"
+              element={
+                <ProtectedRoute
+                  allowedRoles={['SUPER_ADMIN', 'COMPANY_ADMIN', 'LOCATION_MANAGER']}
+                >
+                  <LocationsPage />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Shops – add SHOP_OWNER */}
+            <Route
+              path="shops"
+              element={
+                <ProtectedRoute
+                  allowedRoles={['SUPER_ADMIN', 'COMPANY_ADMIN', 'LOCATION_MANAGER', 'SHOP_OWNER']}
+                >
+                  <ShopsPage />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Products – accessible to all authenticated users */}
+            <Route
+              path="products"
+              element={
+                <ProtectedRoute allowedRoles={['*']}>
+                  <ProductsPage />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Stock – accessible to all authenticated users */}
+            <Route
+              path="stock"
+              element={
+                <ProtectedRoute allowedRoles={['*']}>
+                  <StockPage />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Expiry – accessible to all authenticated users */}
+            <Route
+              path="expiry"
+              element={
+                <ProtectedRoute allowedRoles={['*']}>
+                  <ExpiryPage />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Returns – shop owners and above */}
+            <Route
+              path="returns"
+              element={
+                <ProtectedRoute
+                  allowedRoles={['SUPER_ADMIN', 'COMPANY_ADMIN', 'SHOP_OWNER']}
+                >
+                  <ReturnsPage />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Reports – accessible to all authenticated users (can be refined later) */}
+            <Route
+              path="reports"
+              element={
+                <ProtectedRoute allowedRoles={['*']}>
+                  <ReportsPage />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Users – admin only */}
+            <Route
+              path="users"
+              element={
+                <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'COMPANY_ADMIN', 'LOCATION_MANAGER']}>
+                  <UsersPage />
+                </ProtectedRoute>
+              }
+            />
           </Route>
         </Routes>
       </AuthProvider>
