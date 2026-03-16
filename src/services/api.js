@@ -5,12 +5,10 @@ const api = axios.create({
   withCredentials: true,
 });
 
-// Optional: Add response interceptor for error handling
 api.interceptors.response.use(
   response => response,
   error => {
-    if (error.response?.status === 401) {
-      // Redirect to login if not authenticated
+    if (error.response?.status === 401 && window.location.pathname !== '/login') {
       window.location.href = '/login';
     }
     return Promise.reject(error);
