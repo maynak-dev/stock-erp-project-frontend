@@ -7,38 +7,53 @@ import { useAuth } from '../contexts/AuthContext';
 
 export default function StockPage() {
   const [stock, setStock] = useState([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAddOpen, setIsAddOpen] = useState(false);
   const { user } = useAuth();
+  const canAdd = ['COMPANY_ADMIN', 'LOCATION_MANAGER', 'SHOP_OWNER'].includes(user?.role);
 
   const fetchStock = async () => {
-    const res = await api.get('/stock');
-    setStock(res.data);
+    try { const r = await api.get('/stock'); setStock(r.data); }
+    catch (e) { console.error(e); }
   };
 
-  useEffect(() => {
-    fetchStock();
-  }, []);
+  useEffect(() => { fetchStock(); }, []);
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900">Stock Management</h1>
-        {(user.role === 'COMPANY_ADMIN' || user.role === 'LOCATION_MANAGER' || user.role === 'SHOP_OWNER') && (
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'20px' }}>
+        <div>
+          <h1 style={{ fontSize:'20px', fontWeight:700, color:'var(--t1)', letterSpacing:'-.02em', margin:0 }}>
+            Stock Management
+          </h1>
+          <p style={{ fontSize:'12px', color:'var(--t3)', marginTop:'4px' }}>
+            {stock.length} items in inventory
+          </p>
+        </div>
+        {canAdd && (
           <button
-            onClick={() => setIsModalOpen(true)}
-            className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+            onClick={() => setIsAddOpen(true)}
+            style={{
+              display:'inline-flex', alignItems:'center', gap:'6px',
+              padding:'9px 16px',
+              background:'linear-gradient(135deg, var(--accent), #8b83ff)',
+              border:'none', borderRadius:'9px',
+              fontSize:'13px', fontWeight:600, color:'#fff',
+              cursor:'pointer', fontFamily:'Sora, sans-serif',
+              boxShadow:'0 4px 16px var(--accent-g)', transition:'opacity .15s',
+            }}
+            onMouseEnter={e => e.currentTarget.style.opacity = '.88'}
+            onMouseLeave={e => e.currentTarget.style.opacity = '1'}
           >
-            <PlusIcon className="h-5 w-5 mr-2" />
-            Add Stock
+            <PlusIcon style={{ width:14, height:14 }}/> Add Stock
           </button>
         )}
       </div>
 
-      <StockTable data={stock} />
+      <StockTable data={stock}/>
 
       <AddStockModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        isOpen={isAddOpen}
+        onClose={() => setIsAddOpen(false)}
         onSuccess={fetchStock}
       />
     </div>
