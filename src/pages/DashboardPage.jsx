@@ -8,9 +8,9 @@ import api from '../services/api';
 export default function DashboardPage() {
   const [stats, setStats] = useState([
     { name: 'Total Stock Value', value: '$0', icon: CurrencyDollarIcon },
-    { name: 'Total Items', value: '0', icon: CubeIcon },
-    { name: 'Expiring Soon', value: '0', icon: ClockIcon },
-    { name: 'Pending Returns', value: '0', icon: ArrowPathIcon },
+    { name: 'Total Items',       value: '0',  icon: CubeIcon },
+    { name: 'Expiring Soon',     value: '0',  icon: ClockIcon },
+    { name: 'Pending Returns',   value: '0',  icon: ArrowPathIcon },
   ]);
 
   useEffect(() => {
@@ -19,16 +19,14 @@ export default function DashboardPage() {
         const [stockRes, expiryRes, returnsRes] = await Promise.all([
           api.get('/stock'),
           api.get('/expiry?days=7'),
-          api.get('/returns?status=PENDING')
+          api.get('/returns?status=PENDING'),
         ]);
-
         const totalItems = stockRes.data.reduce((sum, item) => sum + item.quantity, 0);
-        // For total value, you'd need price * quantity; here we just use count
         setStats([
-          { name: 'Total Stock Value', value: `$${totalItems * 10}`, icon: CurrencyDollarIcon }, // placeholder
-          { name: 'Total Items', value: totalItems.toString(), icon: CubeIcon },
-          { name: 'Expiring Soon', value: expiryRes.data.length.toString(), icon: ClockIcon },
-          { name: 'Pending Returns', value: returnsRes.data.length.toString(), icon: ArrowPathIcon },
+          { name: 'Total Stock Value', value: `$${totalItems * 10}`, icon: CurrencyDollarIcon },
+          { name: 'Total Items',       value: totalItems.toString(),              icon: CubeIcon },
+          { name: 'Expiring Soon',     value: expiryRes.data.length.toString(),   icon: ClockIcon },
+          { name: 'Pending Returns',   value: returnsRes.data.length.toString(),  icon: ArrowPathIcon },
         ]);
       } catch (error) {
         console.error(error);
@@ -39,9 +37,19 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-gray-900 mb-6">Dashboard</h1>
+      {/* Page header */}
+      <div style={{ marginBottom: '28px' }}>
+        <h1 style={{ fontSize: '22px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: 0 }}>
+          Dashboard
+        </h1>
+        <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>
+          Overview of your stock and operations
+        </p>
+      </div>
+
       <StatsCards stats={stats} />
-      <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+      <div style={{ marginTop: '24px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
         <ExpiryAlerts />
         <StockChart />
       </div>
