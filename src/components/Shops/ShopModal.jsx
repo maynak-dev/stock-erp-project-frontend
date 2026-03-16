@@ -3,146 +3,70 @@ import { Dialog, Transition } from '@headlessui/react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { XMarkIcon } from '@heroicons/react/24/outline';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
+import { modalStyles as M, onFocus, onBlur } from '../../styles';
 
-const shopSchema = z.object({
-  name: z.string().min(1, 'Shop name is required'),
-  address: z.string().optional(),
-  locationId: z.string().min(1, 'Location is required'),
-});
+const schema = z.object({ name: z.string().min(1,'Shop name is required'), address: z.string().optional(), locationId: z.string().min(1,'Location is required') });
 
 export default function ShopModal({ isOpen, onClose, shop, onSuccess }) {
   const { user } = useAuth();
   const [locations, setLocations] = useState([]);
-  const { register, handleSubmit, formState: { errors }, reset, setValue } = useForm({
-    resolver: zodResolver(shopSchema),
-    defaultValues: shop || {}
-  });
+  const { register, handleSubmit, formState:{errors}, reset, setValue } = useForm({ resolver: zodResolver(schema), defaultValues: shop || {} });
 
   useEffect(() => {
-    const fetchLocations = async () => {
-      try {
-        const res = await api.get('/locations');
-        setLocations(res.data);
-      } catch (error) {
-        console.error('Failed to fetch locations', error);
-      }
-    };
-    if (isOpen) {
-      fetchLocations();
-      if (shop) {
-        reset(shop);
-      } else {
-        reset({});
-        // Pre-fill locationId if user is location manager
-        if (user.role === 'LOCATION_MANAGER' && user.locationId) {
-          setValue('locationId', user.locationId);
-        }
-      }
-    }
+    if (!isOpen) return;
+    api.get('/locations').then(r => setLocations(r.data)).catch(console.error);
+    if (shop) { reset(shop); } else { reset({}); if (user.role === 'LOCATION_MANAGER' && user.locationId) setValue('locationId', user.locationId); }
   }, [isOpen, shop, reset, setValue, user]);
 
   const onSubmit = async (data) => {
     try {
-      if (shop) {
-        await api.put(`/shops/${shop.id}`, data);
-        toast.success('Shop updated successfully');
-      } else {
-        await api.post('/shops', data);
-        toast.success('Shop created successfully');
-      }
-      onSuccess();
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Operation failed');
-    }
+      shop ? await api.put(`/shops/${shop.id}`, data) : await api.post('/shops', data);
+      toast.success(shop ? 'Shop updated' : 'Shop created'); onSuccess();
+    } catch(e) { toast.error(e.response?.data?.message || 'Operation failed'); }
   };
 
   return (
     <Transition appear show={isOpen} as={Fragment}>
-      <Dialog as="div" className="relative z-10" onClose={onClose}>
-        <Transition.Child
-          as={Fragment}
-          enter="ease-out duration-300"
-          enterFrom="opacity-0"
-          enterTo="opacity-100"
-          leave="ease-in duration-200"
-          leaveFrom="opacity-100"
-          leaveTo="opacity-0"
-        >
-          <div className="fixed inset-0 bg-black bg-opacity-25" />
+      <Dialog as="div" style={{position:'fixed',inset:0,zIndex:50}} onClose={onClose}>
+        <Transition.Child as={Fragment} enter="ease-out duration-200" enterFrom="opacity-0" enterTo="opacity-100" leave="ease-in duration-150" leaveFrom="opacity-100" leaveTo="opacity-0">
+          <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.65)',backdropFilter:'blur(4px)'}}/>
         </Transition.Child>
-
-        <div className="fixed inset-0 overflow-y-auto">
-          <div className="flex min-h-full items-center justify-center p-4">
-            <Transition.Child
-              as={Fragment}
-              enter="ease-out duration-300"
-              enterFrom="opacity-0 scale-95"
-              enterTo="opacity-100 scale-100"
-              leave="ease-in duration-200"
-              leaveFrom="opacity-100 scale-100"
-              leaveTo="opacity-0 scale-95"
-            >
-              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 shadow-xl transition-all">
-                <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-gray-900">
-                  {shop ? 'Edit Shop' : 'Add Shop'}
-                </Dialog.Title>
-
-                <form onSubmit={handleSubmit(onSubmit)} className="mt-4 space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Location *</label>
-                    <select
-                      {...register('locationId')}
-                      disabled={user.role === 'LOCATION_MANAGER' && user.locationId}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-100"
-                    >
-                      <option value="">Select location</option>
-                      {locations.map(location => (
-                        <option key={location.id} value={location.id}>{location.name}</option>
-                      ))}
-                    </select>
-                    {errors.locationId && <p className="text-red-500 text-xs">{errors.locationId.message}</p>}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Shop Name *</label>
-                    <input
-                      {...register('name')}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                    />
-                    {errors.name && <p className="text-red-500 text-xs">{errors.name.message}</p>}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Address</label>
-                    <textarea
-                      {...register('address')}
-                      rows="3"
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                    />
-                  </div>
-
-                  <div className="mt-6 flex justify-end space-x-3">
-                    <button
-                      type="button"
-                      onClick={onClose}
-                      className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-                    >
-                      {shop ? 'Update' : 'Create'}
-                    </button>
-                  </div>
-                </form>
-              </Dialog.Panel>
-            </Transition.Child>
-          </div>
+        <div style={{position:'fixed',inset:0,display:'flex',alignItems:'center',justifyContent:'center',padding:'24px',zIndex:51}}>
+          <Transition.Child as={Fragment} enter="ease-out duration-200" enterFrom="opacity-0 scale-95" enterTo="opacity-100 scale-100" leave="ease-in duration-150" leaveFrom="opacity-100 scale-100" leaveTo="opacity-0 scale-95">
+            <Dialog.Panel style={M.panel}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'20px'}}>
+                <Dialog.Title style={{...M.title,margin:0}}>{shop ? 'Edit Shop' : 'Add Shop'}</Dialog.Title>
+                <button onClick={onClose} style={{background:'none',border:'none',color:'var(--t3)',cursor:'pointer'}}><XMarkIcon style={{width:16,height:16}}/></button>
+              </div>
+              <form onSubmit={handleSubmit(onSubmit)}>
+                <div style={M.formGroup}>
+                  <label style={M.label}>Location *</label>
+                  <select {...register('locationId')} disabled={user.role === 'LOCATION_MANAGER' && user.locationId} style={{...M.select,opacity:(user.role==='LOCATION_MANAGER'&&user.locationId)?'.6':'1'}} onFocus={onFocus} onBlur={onBlur}>
+                    <option value="">Select location</option>
+                    {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                  </select>
+                  {errors.locationId && <p style={M.error}>{errors.locationId.message}</p>}
+                </div>
+                <div style={M.formGroup}>
+                  <label style={M.label}>Shop Name *</label>
+                  <input {...register('name')} style={M.input} onFocus={onFocus} onBlur={onBlur}/>
+                  {errors.name && <p style={M.error}>{errors.name.message}</p>}
+                </div>
+                <div style={M.formGroup}>
+                  <label style={M.label}>Address</label>
+                  <textarea {...register('address')} rows={3} style={M.textarea} onFocus={onFocus} onBlur={onBlur}/>
+                </div>
+                <div style={M.footer}>
+                  <button type="button" onClick={onClose} style={M.btnCancel}>Cancel</button>
+                  <button type="submit" style={M.btnSubmit}>{shop ? 'Update' : 'Create'}</button>
+                </div>
+              </form>
+            </Dialog.Panel>
+          </Transition.Child>
         </div>
       </Dialog>
     </Transition>
