@@ -1,0 +1,65 @@
+import { useEffect, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import toast from 'react-hot-toast';
+import api from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
+import ModalShell, { M, Field, TextArea, Select } from '../ModalShell';
+
+const schema = z.object({
+  locationId: z.string().min(1, 'Location is required'),
+  name: z.string().min(1, 'Shop name is required'),
+  address: z.string().optional(),
+});
+
+export default function AddShopModal({ isOpen, onClose, onSuccess }) {
+  const { user } = useAuth();
+  const [locations, setLocations] = useState([]);
+
+  const { register, handleSubmit, formState: { errors, isSubmitting }, reset, setValue } = useForm({
+    resolver: zodResolver(schema),
+    defaultValues: { locationId: '', name: '', address: '' },
+  });
+
+  useEffect(() => {
+    if (!isOpen) return;
+    api.get('/locations').then(r => setLocations(r.data)).catch(console.error);
+    reset({ locationId: '', name: '', address: '' });
+    if (user.role === 'LOCATION_MANAGER' && user.locationId) {
+      setValue('locationId', user.locationId);
+    }
+  }, [isOpen, reset, setValue, user]);
+
+  const handleClose = () => { reset(); onClose(); };
+
+  const onSubmit = async (data) => {
+    try {
+      await api.post('/shops', data);
+      toast.success('Shop created');
+      reset();
+      onSuccess();
+    } catch (e) { toast.error(e.response?.data?.message || 'Failed to create'); }
+  };
+
+  const isLocationLocked = user.role === 'LOCATION_MANAGER' && !!user.locationId;
+
+  return (
+    <ModalShell isOpen={isOpen} onClose={handleClose} title="Add Shop">
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <Select label="Location" name="locationId" register={register} errors={errors} required disabled={isLocationLocked}>
+          <option value="">Select location</option>
+          {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+        </Select>
+        <Field label="Shop Name" name="name" register={register} errors={errors} required />
+        <TextArea label="Address" name="address" register={register} />
+        <div style={M.footer}>
+          <button type="button" onClick={handleClose} style={M.btnCancel}>Cancel</button>
+          <button type="submit" disabled={isSubmitting} style={{ ...M.btnSubmit, opacity: isSubmitting ? .6 : 1 }}>
+            {isSubmitting ? 'Creating…' : 'Create Shop'}
+          </button>
+        </div>
+      </form>
+    </ModalShell>
+  );
+}
