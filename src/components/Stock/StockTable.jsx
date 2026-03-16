@@ -123,7 +123,7 @@ export default function StockTable({ data }) {
   return (
     <div>
       <div style={T.tableCard}>
-        <table style={{ width:'100%', borderCollapse:'collapse' }}>
+        <div className="table-scroll"><table style={{ width:'100%', borderCollapse:'collapse' }}>
           <thead>
             {table.getHeaderGroups().map(hg => (
               <tr key={hg.id}>
@@ -153,7 +153,7 @@ export default function StockTable({ data }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
         {data.length === 0 && <div style={T.stateBox}>No stock items found</div>}
       </div>
 
