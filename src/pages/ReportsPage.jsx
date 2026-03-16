@@ -293,9 +293,15 @@ export default function ReportsPage() {
               </h2>
               {salesData.length === 0
                 ? (
-                  <div style={{ ...T.stateBox, display:'flex', flexDirection:'column', alignItems:'center', gap:'8px' }}>
-                    <div style={{ fontSize:'28px' }}>📊</div>
-                    <div>Sales report not yet implemented</div>
+                  <div style={{ ...T.stateBox, display:'flex', flexDirection:'column', alignItems:'center', gap:'10px' }}>
+                    <div style={{ width:'44px', height:'44px', borderRadius:'12px', background:'var(--accent-d)',
+                                  border:'1px solid rgba(108,99,255,.2)', display:'flex', alignItems:'center',
+                                  justifyContent:'center' }}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent-soft)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+                      </svg>
+                    </div>
+                    <div style={{ fontWeight:500, color:'var(--t2)' }}>Sales report not yet implemented</div>
                     <div style={{ fontSize:'11px', color:'var(--t3)' }}>Connect a billing module to see data here</div>
                   </div>
                 )
