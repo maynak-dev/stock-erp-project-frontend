@@ -1,5 +1,9 @@
-import ProductList from '../components/Products/ProductList';
+// import ProductList from '../components/Products/ProductList';
+
+// export default function ProductsPage() {
+//   return <ProductList />;
+// }
 
 export default function ProductsPage() {
-  return <ProductList />;
+  return <div className="p-6">Products Page</div>;
 }

@@ -1,5 +1,9 @@
-import UserList from '../components/Users/UserList';
+// import UserList from '../components/Users/UserList';
+
+// export default function UsersPage() {
+//   return <UserList />;
+// }
 
 export default function UsersPage() {
-  return <UserList />;
+  return <div className="p-6">Users Page</div>;
 }
