@@ -125,3 +125,39 @@ body {
 @media (max-width: 768px) {
   .hamburger-btn { display: flex; }
 }
+
+/* Reports filter grid: 5 cols → 2 cols on mobile */
+.reports-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+}
+@media (max-width: 768px) {
+  .reports-filter-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 400px) {
+  .reports-filter-grid { grid-template-columns: 1fr; }
+}
+
+/* Reports tab bar: wrap on mobile */
+.reports-tab-bar {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 5px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.reports-tab-bar::-webkit-scrollbar { display: none; }
+
+/* Top bar: stack on very small screens */
+@media (max-width: 480px) {
+  .page-top-bar {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+  }
+}
