@@ -3,10 +3,12 @@ import { Dialog, Transition } from '@headlessui/react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { XMarkIcon } from '@heroicons/react/24/outline';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
+import { modalStyles as M, onFocus, onBlur } from '../../styles';
 
-const companySchema = z.object({
+const schema = z.object({
   name: z.string().min(1, 'Company name is required'),
   gst: z.string().optional(),
   address: z.string().optional(),
@@ -15,110 +17,72 @@ const companySchema = z.object({
 
 export default function CompanyModal({ isOpen, onClose, company, onSuccess }) {
   const { register, handleSubmit, formState: { errors }, reset } = useForm({
-    resolver: zodResolver(companySchema),
-    defaultValues: company || {}
+    resolver: zodResolver(schema),
+    defaultValues: company || {},
   });
 
   const onSubmit = async (data) => {
     try {
-      if (company) {
-        await api.put(`/companies/${company.id}`, data);
-        toast.success('Company updated successfully');
-      } else {
-        await api.post('/companies', data);
-        toast.success('Company created successfully');
-      }
+      company
+        ? await api.put(`/companies/${company.id}`, data)
+        : await api.post('/companies', data);
+      toast.success(company ? 'Company updated' : 'Company created');
       onSuccess();
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Operation failed');
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Operation failed');
     }
   };
 
+  // FIX: Use 'tag' instead of 'as' (reserved word issue), and use a plain string default
+  const Field = ({ label, name, type = 'text', tag = 'input', rows, required }) => (
+    <div style={M.formGroup}>
+      <label style={M.label}>{label}{required && ' *'}</label>
+      {tag === 'textarea'
+        ? <textarea {...register(name)} rows={rows || 3} style={M.textarea} onFocus={onFocus} onBlur={onBlur} />
+        : <input type={type} {...register(name)} style={M.input} onFocus={onFocus} onBlur={onBlur} />}
+      {errors[name] && <p style={M.error}>{errors[name].message}</p>}
+    </div>
+  );
+
   return (
     <Transition appear show={isOpen} as={Fragment}>
-      <Dialog as="div" className="relative z-10" onClose={onClose}>
+      <Dialog as="div" style={{ position: 'fixed', inset: 0, zIndex: 50 }} onClose={onClose}>
         <Transition.Child
           as={Fragment}
-          enter="ease-out duration-300"
-          enterFrom="opacity-0"
-          enterTo="opacity-100"
-          leave="ease-in duration-200"
-          leaveFrom="opacity-100"
-          leaveTo="opacity-0"
+          enter="ease-out duration-200" enterFrom="opacity-0" enterTo="opacity-100"
+          leave="ease-in duration-150" leaveFrom="opacity-100" leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-black bg-opacity-25" />
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.65)', backdropFilter: 'blur(4px)' }} />
         </Transition.Child>
 
-        <div className="fixed inset-0 overflow-y-auto">
-          <div className="flex min-h-full items-center justify-center p-4">
-            <Transition.Child
-              as={Fragment}
-              enter="ease-out duration-300"
-              enterFrom="opacity-0 scale-95"
-              enterTo="opacity-100 scale-100"
-              leave="ease-in duration-200"
-              leaveFrom="opacity-100 scale-100"
-              leaveTo="opacity-0 scale-95"
-            >
-              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 shadow-xl transition-all">
-                <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-gray-900">
+        <div style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', zIndex: 51 }}>
+          <Transition.Child
+            as={Fragment}
+            enter="ease-out duration-200" enterFrom="opacity-0 scale-95" enterTo="opacity-100 scale-100"
+            leave="ease-in duration-150" leaveFrom="opacity-100 scale-100" leaveTo="opacity-0 scale-95"
+          >
+            <Dialog.Panel style={M.panel}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <Dialog.Title style={{ ...M.title, margin: 0 }}>
                   {company ? 'Edit Company' : 'Add Company'}
                 </Dialog.Title>
+                <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--t3)', cursor: 'pointer', padding: '4px' }}>
+                  <XMarkIcon style={{ width: 16, height: 16 }} />
+                </button>
+              </div>
 
-                <form onSubmit={handleSubmit(onSubmit)} className="mt-4 space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Company Name *</label>
-                    <input
-                      {...register('name')}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                    />
-                    {errors.name && <p className="text-red-500 text-xs">{errors.name.message}</p>}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">GST Number</label>
-                    <input
-                      {...register('gst')}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Contact</label>
-                    <input
-                      {...register('contact')}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Address</label>
-                    <textarea
-                      {...register('address')}
-                      rows="3"
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                    />
-                  </div>
-
-                  <div className="mt-6 flex justify-end space-x-3">
-                    <button
-                      type="button"
-                      onClick={onClose}
-                      className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-                    >
-                      {company ? 'Update' : 'Create'}
-                    </button>
-                  </div>
-                </form>
-              </Dialog.Panel>
-            </Transition.Child>
-          </div>
+              <form onSubmit={handleSubmit(onSubmit)}>
+                <Field label="Company Name" name="name" required />
+                <Field label="GST Number" name="gst" />
+                <Field label="Contact" name="contact" />
+                <Field label="Address" name="address" tag="textarea" />
+                <div style={M.footer}>
+                  <button type="button" onClick={onClose} style={M.btnCancel}>Cancel</button>
+                  <button type="submit" style={M.btnSubmit}>{company ? 'Update' : 'Create'}</button>
+                </div>
+              </form>
+            </Dialog.Panel>
+          </Transition.Child>
         </div>
       </Dialog>
     </Transition>

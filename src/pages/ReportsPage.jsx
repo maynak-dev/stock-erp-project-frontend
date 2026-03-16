@@ -1,215 +1,187 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Tab } from '@headlessui/react';
 import { useReports } from '../hooks/useReports';
 import { useAuth } from '../contexts/AuthContext';
-import { useEffect } from 'react';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-} from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { S } from '../styles';
+import { modalStyles as M, onFocus, onBlur } from '../styles';
 
-function classNames(...classes) {
-  return classes.filter(Boolean).join(' ');
-}
+const COLORS = ['#6c63ff','#0fcfb0','#f5a623','#ff5a7e','#8b83ff'];
 
-const COLORS = ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
+const tabBase = {
+  padding:'8px 18px', borderRadius:'8px', fontSize:'13px', fontWeight:500,
+  cursor:'pointer', border:'none', fontFamily:'Sora,sans-serif',
+  transition:'all .15s', outline:'none',
+};
+
+const CustomTooltip = ({ active, payload, label }) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div style={{background:'var(--bg-elevated)',border:'1px solid var(--border2)',borderRadius:'8px',padding:'10px 14px',fontSize:'12px',color:'var(--t1)',boxShadow:'0 8px 24px rgba(0,0,0,.4)'}}>
+      <div style={{color:'var(--t3)',marginBottom:'4px'}}>{label}</div>
+      {payload.map(p=><div key={p.name} style={{fontWeight:600,color:p.fill}}>{p.name}: {p.value}</div>)}
+    </div>
+  );
+};
 
 export default function ReportsPage() {
   const { user } = useAuth();
-  const { loading, error, fetchStockReport, fetchExpiryReport, fetchReturnReport, fetchSalesReport } = useReports();
-  const [stockData, setStockData] = useState([]);
+  const { fetchStockReport, fetchExpiryReport, fetchReturnReport, fetchSalesReport } = useReports();
+  const [stockData,  setStockData]  = useState([]);
   const [expiryData, setExpiryData] = useState([]);
   const [returnData, setReturnData] = useState([]);
-  const [salesData, setSalesData] = useState([]);
-  const [filters, setFilters] = useState({
-    companyId: user?.companyId || '',
-    locationId: '',
-    shopId: '',
-    startDate: '',
-    endDate: '',
-  });
+  const [salesData,  setSalesData]  = useState([]);
+  const [filters, setFilters] = useState({ companyId: user?.companyId||'', locationId:'', shopId:'', startDate:'', endDate:'' });
+  const [selected, setSelected] = useState(0);
 
-  // Fetch data when filters change
   useEffect(() => {
-    const fetchAll = async () => {
+    const run = async () => {
       try {
-        const stock = await fetchStockReport(filters);
-        setStockData(stock);
-        const expiry = await fetchExpiryReport(filters);
-        setExpiryData(expiry);
-        const returns = await fetchReturnReport(filters);
-        setReturnData(returns);
-        const sales = await fetchSalesReport(filters);
-        setSalesData(sales);
-      } catch (err) {
-        console.error(err);
-      }
+        const [s,e,r,sl] = await Promise.all([
+          fetchStockReport(filters), fetchExpiryReport(filters),
+          fetchReturnReport(filters), fetchSalesReport(filters),
+        ]);
+        setStockData(s); setExpiryData(e); setReturnData(r); setSalesData(sl);
+      } catch(err) { console.error(err); }
     };
-    fetchAll();
+    run();
   }, [filters]);
 
-  const handleFilterChange = (e) => {
-    setFilters({ ...filters, [e.target.name]: e.target.value });
+  const handleFilter = (e) => setFilters(f=>({...f,[e.target.name]:e.target.value}));
+
+  const TABS = ['Stock Report','Expiry Report','Return Report','Sales Report'];
+
+  const STATUS = {
+    PENDING:   { color:'var(--amber)',       bg:'rgba(245,166,35,.1)',   border:'rgba(245,166,35,.2)'   },
+    APPROVED:  { color:'var(--teal)',        bg:'rgba(15,207,176,.1)',   border:'rgba(15,207,176,.2)'   },
+    REJECTED:  { color:'var(--rose)',        bg:'rgba(255,90,126,.1)',   border:'rgba(255,90,126,.2)'   },
+    COMPLETED: { color:'var(--accent-soft)', bg:'var(--accent-d)',       border:'rgba(108,99,255,.2)'   },
   };
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-gray-900 mb-6">Reports</h1>
-
-      {/* Filters */}
-      <div className="bg-white shadow rounded-lg p-4 mb-6 grid grid-cols-1 md:grid-cols-5 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Company</label>
-          <select
-            name="companyId"
-            value={filters.companyId}
-            onChange={handleFilterChange}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-          >
-            <option value="">All Companies</option>
-            {/* This would ideally be populated from API, but for simplicity we'll keep as is */}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Location</label>
-          <select
-            name="locationId"
-            value={filters.locationId}
-            onChange={handleFilterChange}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-          >
-            <option value="">All Locations</option>
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Shop</label>
-          <select
-            name="shopId"
-            value={filters.shopId}
-            onChange={handleFilterChange}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-          >
-            <option value="">All Shops</option>
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Start Date</label>
-          <input
-            type="date"
-            name="startDate"
-            value={filters.startDate}
-            onChange={handleFilterChange}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700">End Date</label>
-          <input
-            type="date"
-            name="endDate"
-            value={filters.endDate}
-            onChange={handleFilterChange}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-          />
-        </div>
+      <div style={S.topBar}>
+        <div><h1 style={S.pageTitle}>Reports</h1><p style={S.pageSub}>Analytics & data export</p></div>
       </div>
 
-      {/* Tabs */}
-      <Tab.Group>
-        <Tab.List className="flex space-x-1 rounded-xl bg-indigo-900/20 p-1">
-          <Tab className={({ selected }) => classNames('w-full rounded-lg py-2.5 text-sm font-medium leading-5', 'ring-white ring-opacity-60 ring-offset-2 ring-offset-indigo-400 focus:outline-none focus:ring-2', selected ? 'bg-white text-indigo-700 shadow' : 'text-indigo-500 hover:bg-white/[0.12] hover:text-indigo-600')}>
-            Stock Report
-          </Tab>
-          <Tab className={({ selected }) => classNames('w-full rounded-lg py-2.5 text-sm font-medium leading-5', 'ring-white ring-opacity-60 ring-offset-2 ring-offset-indigo-400 focus:outline-none focus:ring-2', selected ? 'bg-white text-indigo-700 shadow' : 'text-indigo-500 hover:bg-white/[0.12] hover:text-indigo-600')}>
-            Expiry Report
-          </Tab>
-          <Tab className={({ selected }) => classNames('w-full rounded-lg py-2.5 text-sm font-medium leading-5', 'ring-white ring-opacity-60 ring-offset-2 ring-offset-indigo-400 focus:outline-none focus:ring-2', selected ? 'bg-white text-indigo-700 shadow' : 'text-indigo-500 hover:bg-white/[0.12] hover:text-indigo-600')}>
-            Return Report
-          </Tab>
-          <Tab className={({ selected }) => classNames('w-full rounded-lg py-2.5 text-sm font-medium leading-5', 'ring-white ring-opacity-60 ring-offset-2 ring-offset-indigo-400 focus:outline-none focus:ring-2', selected ? 'bg-white text-indigo-700 shadow' : 'text-indigo-500 hover:bg-white/[0.12] hover:text-indigo-600')}>
-            Sales Report
-          </Tab>
-        </Tab.List>
-        <Tab.Panels className="mt-4">
-          <Tab.Panel className="bg-white rounded-lg p-6 shadow">
-            <h2 className="text-lg font-medium mb-4">Stock Summary</h2>
-            <ResponsiveContainer width="100%" height={400}>
-              <BarChart data={stockData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="value" fill="#4F46E5" />
-              </BarChart>
-            </ResponsiveContainer>
+      {/* Filters */}
+      <div style={{background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:'14px',padding:'16px 20px',marginBottom:'20px',display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:'12px'}}>
+        {[
+          ['companyId','Company'],['locationId','Location'],['shopId','Shop'],
+          ['startDate','Start Date','date'],['endDate','End Date','date'],
+        ].map(([name,label,type='text'])=>(
+          <div key={name}>
+            <label style={{...M.label,display:'block',marginBottom:'5px'}}>{label}</label>
+            {type==='date'
+              ? <input type="date" name={name} value={filters[name]} onChange={handleFilter} style={{...M.input,padding:'8px 12px',fontSize:'12px'}} onFocus={onFocus} onBlur={onBlur}/>
+              : <select name={name} value={filters[name]} onChange={handleFilter} style={{...M.select,padding:'8px 12px',fontSize:'12px'}} onFocus={onFocus} onBlur={onBlur}>
+                  <option value="">All {label}s</option>
+                </select>
+            }
+          </div>
+        ))}
+      </div>
+
+      {/* Tab bar */}
+      <Tab.Group selectedIndex={selected} onChange={setSelected}>
+        <div style={{display:'flex',gap:'4px',marginBottom:'16px',background:'var(--bg-surface)',border:'1px solid var(--border)',borderRadius:'12px',padding:'5px'}}>
+          {TABS.map((t,i)=>(
+            <Tab key={t} style={{...tabBase,background:selected===i?'var(--bg-card)':'transparent',color:selected===i?'var(--accent-soft)':'var(--t3)',borderColor:selected===i?'var(--border2)':'transparent',flex:1,border:selected===i?'1px solid var(--border2)':'1px solid transparent'}}>
+              {t}
+            </Tab>
+          ))}
+        </div>
+
+        <Tab.Panels>
+          {/* Stock Report */}
+          <Tab.Panel>
+            <div style={{background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:'14px',padding:'24px'}}>
+              <h2 style={{fontSize:'14px',fontWeight:600,color:'var(--t1)',marginBottom:'20px'}}>Stock Summary by Status</h2>
+              <ResponsiveContainer width="100%" height={360}>
+                <BarChart data={stockData} margin={{top:0,right:0,left:-10,bottom:0}}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)"/>
+                  <XAxis dataKey="name" tick={{fill:'var(--t3)',fontSize:11}} axisLine={false} tickLine={false}/>
+                  <YAxis tick={{fill:'var(--t3)',fontSize:11}} axisLine={false} tickLine={false}/>
+                  <Tooltip content={<CustomTooltip/>}/>
+                  <Legend wrapperStyle={{fontSize:'12px',color:'var(--t2)'}}/>
+                  <Bar dataKey="value" fill="#6c63ff" radius={[4,4,0,0]}/>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </Tab.Panel>
-          <Tab.Panel className="bg-white rounded-lg p-6 shadow">
-            <h2 className="text-lg font-medium mb-4">Expiring Items</h2>
-            <ResponsiveContainer width="100%" height={400}>
-              <PieChart>
-                <Pie
-                  data={expiryData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                  outerRadius={150}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {expiryData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
+
+          {/* Expiry Report */}
+          <Tab.Panel>
+            <div style={{background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:'14px',padding:'24px'}}>
+              <h2 style={{fontSize:'14px',fontWeight:600,color:'var(--t1)',marginBottom:'20px'}}>Expiring Items Distribution</h2>
+              <ResponsiveContainer width="100%" height={360}>
+                <PieChart>
+                  <Pie data={expiryData} cx="50%" cy="50%" innerRadius={70} outerRadius={130}
+                    paddingAngle={3} dataKey="value" labelLine={false}
+                    label={({name,percent})=>`${name} ${(percent*100).toFixed(0)}%`}>
+                    {expiryData.map((_,i)=><Cell key={i} fill={COLORS[i%COLORS.length]} strokeWidth={0}/>)}
+                  </Pie>
+                  <Tooltip content={<CustomTooltip/>}/>
+                  <Legend wrapperStyle={{fontSize:'12px',color:'var(--t2)'}}/>
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
           </Tab.Panel>
-          <Tab.Panel className="bg-white rounded-lg p-6 shadow">
-            <h2 className="text-lg font-medium mb-4">Return Requests</h2>
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead>
-                <tr>
-                  <th className="px-4 py-2 text-left">Request #</th>
-                  <th className="px-4 py-2 text-left">Shop</th>
-                  <th className="px-4 py-2 text-left">Date</th>
-                  <th className="px-4 py-2 text-left">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {returnData.map((item) => (
-                  <tr key={item.id}>
-                    <td className="px-4 py-2">{item.requestNumber}</td>
-                    <td className="px-4 py-2">{item.shop?.name}</td>
-                    <td className="px-4 py-2">{new Date(item.createdAt).toLocaleDateString()}</td>
-                    <td className="px-4 py-2">{item.status}</td>
+
+          {/* Return Report */}
+          <Tab.Panel>
+            <div style={{background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:'14px',overflow:'hidden'}}>
+              <div style={{padding:'18px 20px',borderBottom:'1px solid var(--border)'}}>
+                <h2 style={{fontSize:'14px',fontWeight:600,color:'var(--t1)'}}>Return Requests</h2>
+              </div>
+              <table style={{width:'100%',borderCollapse:'collapse'}}>
+                <thead>
+                  <tr>
+                    {['Request #','Shop','Date','Status'].map(h=>(
+                      <th key={h} style={S.th}>{h}</th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {returnData.map(item=>{
+                    const st = STATUS[item.status]||{color:'var(--t2)',bg:'var(--bg-elevated)',border:'var(--border2)'};
+                    return (
+                      <tr key={item.id} style={S.tr}
+                        onMouseEnter={e=>e.currentTarget.style.background='var(--bg-elevated)'}
+                        onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                        <td style={{...S.td,...S.mono}}>{item.requestNumber}</td>
+                        <td style={S.td}>{item.shop?.name}</td>
+                        <td style={{...S.td,...S.mono}}>{new Date(item.createdAt).toLocaleDateString()}</td>
+                        <td style={S.td}><span style={S.badge(st.color,st.bg,st.border)}>{item.status}</span></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              {returnData.length === 0 && <div style={S.stateBox}>No return data</div>}
+            </div>
           </Tab.Panel>
-          <Tab.Panel className="bg-white rounded-lg p-6 shadow">
-            <h2 className="text-lg font-medium mb-4">Sales Report</h2>
-            <ResponsiveContainer width="100%" height={400}>
-              <BarChart data={salesData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="sales" fill="#10B981" />
-              </BarChart>
-            </ResponsiveContainer>
+
+          {/* Sales Report */}
+          <Tab.Panel>
+            <div style={{background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:'14px',padding:'24px'}}>
+              <h2 style={{fontSize:'14px',fontWeight:600,color:'var(--t1)',marginBottom:'20px'}}>Sales Overview</h2>
+              <ResponsiveContainer width="100%" height={360}>
+                <BarChart data={salesData} margin={{top:0,right:0,left:-10,bottom:0}}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)"/>
+                  <XAxis dataKey="date" tick={{fill:'var(--t3)',fontSize:11}} axisLine={false} tickLine={false}/>
+                  <YAxis tick={{fill:'var(--t3)',fontSize:11}} axisLine={false} tickLine={false}/>
+                  <Tooltip content={<CustomTooltip/>}/>
+                  <Legend wrapperStyle={{fontSize:'12px',color:'var(--t2)'}}/>
+                  <Bar dataKey="sales" fill="#0fcfb0" radius={[4,4,0,0]}/>
+                </BarChart>
+              </ResponsiveContainer>
+              {salesData.length === 0 && (
+                <div style={{textAlign:'center',marginTop:'20px',fontSize:'13px',color:'var(--t3)'}}>
+                  Sales report not yet implemented
+                </div>
+              )}
+            </div>
           </Tab.Panel>
         </Tab.Panels>
       </Tab.Group>

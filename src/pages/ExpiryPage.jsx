@@ -1,58 +1,71 @@
 import { useState, useEffect } from 'react';
 import api from '../services/api';
 import { format } from 'date-fns';
+import { S } from '../styles';
+
+const urgency = (daysLeft) => {
+  if (daysLeft <= 0)  return { label:'Expired', color:'var(--rose)',        bg:'rgba(255,90,126,.1)',   border:'rgba(255,90,126,.2)'   };
+  if (daysLeft <= 3)  return { label:`${daysLeft}d`, color:'var(--rose)',   bg:'rgba(255,90,126,.1)',   border:'rgba(255,90,126,.2)'   };
+  if (daysLeft <= 7)  return { label:`${daysLeft}d`, color:'var(--amber)',  bg:'rgba(245,166,35,.1)',   border:'rgba(245,166,35,.2)'   };
+  return                     { label:`${daysLeft}d`, color:'var(--teal)',   bg:'rgba(15,207,176,.1)',   border:'rgba(15,207,176,.2)'   };
+};
 
 export default function ExpiryPage() {
-  const [expiringItems, setExpiringItems] = useState([]);
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get('/expiry?days=30')
-      .then(res => setExpiringItems(res.data))
-      .catch(console.error);
+    api.get('/expiry?days=30').then(r=>{setItems(r.data);setLoading(false);}).catch(console.error);
   }, []);
+
+  if (loading) return <div style={S.stateBox}>Loading expiry data…</div>;
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-gray-900 mb-6">Expiry Alerts</h1>
-      <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+      <div style={S.topBar}>
+        <div>
+          <h1 style={S.pageTitle}>Expiry Alerts</h1>
+          <p style={S.pageSub}>Items expiring within 30 days</p>
+        </div>
+        <div style={{display:'flex',alignItems:'center',gap:'10px'}}>
+          {[['Expired','var(--rose)'],['≤7 days','var(--amber)'],['≤30 days','var(--teal)']].map(([label,color])=>(
+            <div key={label} style={{display:'flex',alignItems:'center',gap:'5px',fontSize:'11px',color:'var(--t3)'}}>
+              <div style={{width:7,height:7,borderRadius:'50%',background:color,boxShadow:`0 0 4px ${color}`}}/>
+              {label}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div style={S.tableCard}>
+        <table style={{width:'100%',borderCollapse:'collapse'}}>
+          <thead>
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Batch</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Quantity</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Expiry Date</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Days Left</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location/Shop</th>
+              <th style={S.th}>Product</th><th style={S.th}>Batch</th><th style={S.th}>Qty</th>
+              <th style={S.th}>Expiry Date</th><th style={S.th}>Days Left</th><th style={S.th}>Location / Shop</th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {expiringItems.map(item => {
-              const daysLeft = Math.ceil((new Date(item.expiryDate) - new Date()) / (1000 * 60 * 60 * 24));
+          <tbody>
+            {items.map(item => {
+              const daysLeft = Math.ceil((new Date(item.expiryDate) - new Date()) / 86400000);
+              const u = urgency(daysLeft);
               return (
-                <tr key={item.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.product.name}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.batchNumber}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.quantity}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{format(new Date(item.expiryDate), 'dd/MM/yyyy')}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                      daysLeft <= 0 ? 'bg-red-100 text-red-800' :
-                      daysLeft <= 3 ? 'bg-orange-100 text-orange-800' :
-                      daysLeft <= 7 ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-green-100 text-green-800'
-                    }`}>
-                      {daysLeft <= 0 ? 'Expired' : `${daysLeft} days`}
-                    </span>
+                <tr key={item.id} style={S.tr}
+                  onMouseEnter={e=>e.currentTarget.style.background='var(--bg-elevated)'}
+                  onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                  <td style={S.tdBold}>{item.product.name}</td>
+                  <td style={{...S.td,...S.mono}}>{item.batchNumber}</td>
+                  <td style={{...S.td,fontWeight:600,color:'var(--teal)'}}>{item.quantity}</td>
+                  <td style={{...S.td,...S.mono}}>{format(new Date(item.expiryDate),'dd/MM/yyyy')}</td>
+                  <td style={S.td}>
+                    <span style={S.badge(u.color,u.bg,u.border)}>{u.label}</span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {item.shop?.name || item.location?.name || item.company?.name}
-                  </td>
+                  <td style={S.td}>{item.shop?.name || item.location?.name || item.company?.name || '—'}</td>
                 </tr>
               );
             })}
           </tbody>
         </table>
+        {items.length === 0 && <div style={S.stateBox}>No items expiring within 30 days 🎉</div>}
       </div>
     </div>
   );

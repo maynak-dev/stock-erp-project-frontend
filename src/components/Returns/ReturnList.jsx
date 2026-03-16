@@ -3,124 +3,98 @@ import { CheckIcon, XMarkIcon, PlusIcon } from '@heroicons/react/24/outline';
 import ReturnModal from './ReturnModal';
 import { useReturns } from '../../hooks/useReturns';
 import { useAuth } from '../../contexts/AuthContext';
+import { S } from '../../styles';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 
-const statusColors = {
-  PENDING: 'bg-yellow-100 text-yellow-800',
-  APPROVED: 'bg-green-100 text-green-800',
-  REJECTED: 'bg-red-100 text-red-800',
-  COMPLETED: 'bg-blue-100 text-blue-800',
+const STATUS = {
+  PENDING:   { color:'var(--amber)',       bg:'rgba(245,166,35,.1)',   border:'rgba(245,166,35,.2)'   },
+  APPROVED:  { color:'var(--teal)',        bg:'rgba(15,207,176,.1)',   border:'rgba(15,207,176,.2)'   },
+  REJECTED:  { color:'var(--rose)',        bg:'rgba(255,90,126,.1)',   border:'rgba(255,90,126,.2)'   },
+  COMPLETED: { color:'var(--accent-soft)', bg:'var(--accent-d)',       border:'rgba(108,99,255,.2)'   },
 };
 
 export default function ReturnList() {
   const { returns, loading, error, approveReturn, rejectReturn, refetch } = useReturns();
   const { user } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
-
-  const canCreate = user?.role === 'SHOP_OWNER' || user?.role === 'SHOP_EMPLOYEE';
-  const canApprove = user?.role === 'COMPANY_ADMIN' || user?.role === 'SUPER_ADMIN';
+  const canCreate = ['SHOP_OWNER','SHOP_EMPLOYEE'].includes(user?.role);
+  const canApprove = ['COMPANY_ADMIN','SUPER_ADMIN'].includes(user?.role);
 
   const handleApprove = async (id) => {
-    if (window.confirm('Approve this return request?')) {
-      try {
-        await approveReturn(id);
-        toast.success('Return approved');
-      } catch (err) {
-        toast.error('Failed to approve return');
-      }
+    if (window.confirm('Approve this return?')) {
+      try { await approveReturn(id); toast.success('Return approved'); }
+      catch { toast.error('Failed to approve'); }
     }
   };
-
   const handleReject = async (id) => {
-    if (window.confirm('Reject this return request?')) {
-      try {
-        await rejectReturn(id);
-        toast.success('Return rejected');
-      } catch (err) {
-        toast.error('Failed to reject return');
-      }
+    if (window.confirm('Reject this return?')) {
+      try { await rejectReturn(id); toast.success('Return rejected'); }
+      catch { toast.error('Failed to reject'); }
     }
   };
 
-  const handleSuccess = () => {
-    refetch();
-    setIsModalOpen(false);
-  };
-
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div className="text-red-500">Error: {error}</div>;
+  if (loading) return <div style={S.stateBox}>Loading returns…</div>;
+  if (error) return <div style={{...S.stateBox,color:'var(--rose)'}}>Error: {error}</div>;
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900">Return Requests</h1>
+      <div style={S.topBar}>
+        <div><h1 style={S.pageTitle}>Return Requests</h1><p style={S.pageSub}>{returns.length} requests</p></div>
         {canCreate && (
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-          >
-            <PlusIcon className="h-5 w-5 mr-2" />
-            New Return Request
+          <button style={S.btnPrimary} onClick={()=>setIsModalOpen(true)}
+            onMouseEnter={e=>e.currentTarget.style.opacity='.88'} onMouseLeave={e=>e.currentTarget.style.opacity='1'}>
+            <PlusIcon style={{width:14,height:14}}/> New Return Request
           </button>
         )}
       </div>
-
-      <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+      <div style={S.tableCard}>
+        <table style={{width:'100%',borderCollapse:'collapse'}}>
+          <thead>
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Request #</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Shop</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Items</th>
-              {canApprove && <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>}
+              <th style={S.th}>Request #</th><th style={S.th}>Shop</th><th style={S.th}>Date</th>
+              <th style={S.th}>Status</th><th style={S.th}>Items</th>
+              {canApprove && <th style={S.thRight}>Actions</th>}
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {returns.map((ret) => (
-              <tr key={ret.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{ret.requestNumber}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{ret.shop?.name}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{format(new Date(ret.createdAt), 'dd/MM/yyyy')}</td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`px-2 py-1 rounded-full text-xs font-semibold ${statusColors[ret.status]}`}>
-                    {ret.status}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-500">
-                  {ret.items?.length} item(s)
-                </td>
-                {canApprove && ret.status === 'PENDING' && (
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button
-                      onClick={() => handleApprove(ret.id)}
-                      className="text-green-600 hover:text-green-900 mr-3"
-                      title="Approve"
-                    >
-                      <CheckIcon className="h-5 w-5" />
-                    </button>
-                    <button
-                      onClick={() => handleReject(ret.id)}
-                      className="text-red-600 hover:text-red-900"
-                      title="Reject"
-                    >
-                      <XMarkIcon className="h-5 w-5" />
-                    </button>
-                  </td>
-                )}
-              </tr>
-            ))}
+          <tbody>
+            {returns.map(ret => {
+              const st = STATUS[ret.status] || {color:'var(--t2)',bg:'var(--bg-elevated)',border:'var(--border2)'};
+              return (
+                <tr key={ret.id} style={S.tr}
+                  onMouseEnter={e=>e.currentTarget.style.background='var(--bg-elevated)'}
+                  onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                  <td style={{...S.tdBold,...S.mono}}>{ret.requestNumber}</td>
+                  <td style={S.td}>{ret.shop?.name}</td>
+                  <td style={{...S.td,...S.mono}}>{format(new Date(ret.createdAt),'dd/MM/yyyy')}</td>
+                  <td style={S.td}><span style={S.badge(st.color,st.bg,st.border)}>{ret.status}</span></td>
+                  <td style={S.td}><span style={{color:'var(--t3)'}}>{ret.items?.length} item(s)</span></td>
+                  {canApprove && (
+                    <td style={S.tdRight}>
+                      {ret.status === 'PENDING' && (
+                        <div style={{display:'flex',justifyContent:'flex-end',gap:'6px'}}>
+                          <button style={S.iconBtn('var(--teal)')} onClick={()=>handleApprove(ret.id)} title="Approve"
+                            onMouseEnter={e=>e.currentTarget.style.background='rgba(15,207,176,.2)'}
+                            onMouseLeave={e=>e.currentTarget.style.background='rgba(15,207,176,.1)'}>
+                            <CheckIcon style={{width:13,height:13}}/>
+                          </button>
+                          <button style={S.iconBtn('var(--rose)')} onClick={()=>handleReject(ret.id)} title="Reject"
+                            onMouseEnter={e=>e.currentTarget.style.background='rgba(255,90,126,.2)'}
+                            onMouseLeave={e=>e.currentTarget.style.background='rgba(255,90,126,.1)'}>
+                            <XMarkIcon style={{width:13,height:13}}/>
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  )}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
+        {returns.length === 0 && <div style={S.stateBox}>No return requests</div>}
       </div>
-
-      <ReturnModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSuccess={handleSuccess}
-      />
+      <ReturnModal isOpen={isModalOpen} onClose={()=>setIsModalOpen(false)} onSuccess={()=>{refetch();setIsModalOpen(false);}}/>
     </div>
   );
 }
