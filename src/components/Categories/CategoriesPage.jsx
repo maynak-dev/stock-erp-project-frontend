@@ -3,12 +3,12 @@ import { PencilIcon, TrashIcon, PlusIcon, TagIcon } from '@heroicons/react/24/ou
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useCategories } from '../hooks/useCategories';
-import { useAuth } from '../contexts/AuthContext';
-import DeleteConfirmModal from '../components/DeleteConfirmModal';
-import ModalShell, { M, Field, TextArea } from '../components/ModalShell';
+import { useCategories } from '../../hooks/useCategories';      
+import { useAuth } from '../../contexts/AuthContext';            
+import DeleteConfirmModal from '../DeleteConfirmModal';         
+import ModalShell, { M, Field, TextArea } from '../ModalShell'; 
 import toast from 'react-hot-toast';
-import api from '../services/api';
+import api from '../../services/api';                          
 
 const schema = z.object({
   name:        z.string().min(1, 'Category name is required'),
@@ -31,20 +31,22 @@ const T = {
   badge:     { display:'inline-flex', alignItems:'center', padding:'3px 9px', borderRadius:'20px', fontSize:'11px', fontWeight:600, color:'var(--accent-soft)', background:'var(--accent-d)', border:'1px solid rgba(108,99,255,.2)' },
 };
 
-function CategoryModal({ isOpen, onClose, category, onSuccess, companyId }) {
+function CategoryModal({ isOpen, onClose, category, onSuccess }) {
+  const { user } = useAuth();
   const { register, handleSubmit, formState:{ errors, isSubmitting }, reset } = useForm({
     resolver: zodResolver(schema),
-    defaultValues: category ? { name: category.name, description: category.description || '' } : { name:'', description:'' },
+    defaultValues: category
+      ? { name: category.name, description: category.description || '' }
+      : { name: '', description: '' },
   });
-  const { user } = useAuth();
 
   const handleClose = () => { reset(); onClose(); };
 
   const onSubmit = async (data) => {
     try {
-      const payload = { ...data, companyId: companyId || user.companyId };
+      const payload = { ...data, companyId: category?.companyId || user.companyId };
       if (category) await api.put(`/categories/${category.id}`, payload);
-      else await api.post('/categories', payload);
+      else          await api.post('/categories', payload);
       toast.success(category ? 'Category updated' : 'Category created');
       onSuccess();
       handleClose();
@@ -58,7 +60,8 @@ function CategoryModal({ isOpen, onClose, category, onSuccess, companyId }) {
         <TextArea label="Description (optional)" name="description" register={register}/>
         <div style={M.footer}>
           <button type="button" onClick={handleClose} style={M.btnCancel}>Cancel</button>
-          <button type="submit" disabled={isSubmitting} style={{ ...M.btnSubmit, opacity: isSubmitting ? .6 : 1 }}>
+          <button type="submit" disabled={isSubmitting}
+            style={{ ...M.btnSubmit, opacity: isSubmitting ? .6 : 1 }}>
             {isSubmitting ? 'Saving…' : category ? 'Update' : 'Create'}
           </button>
         </div>
@@ -92,7 +95,8 @@ export default function CategoriesPage() {
         <div><h1 style={T.pageTitle}>Categories</h1><p style={T.pageSub}>{categories.length} categories</p></div>
         {canEdit && (
           <button style={T.btnPrimary} onClick={() => setShowAdd(true)}
-            onMouseEnter={e => e.currentTarget.style.opacity='.88'} onMouseLeave={e => e.currentTarget.style.opacity='1'}>
+            onMouseEnter={e => e.currentTarget.style.opacity='.88'}
+            onMouseLeave={e => e.currentTarget.style.opacity='1'}>
             <PlusIcon style={{ width:14, height:14 }}/> Add Category
           </button>
         )}
@@ -121,7 +125,9 @@ export default function CategoriesPage() {
                       {cat.name}
                     </div>
                   </td>
-                  <td style={{ ...T.td, maxWidth:'240px', overflow:'hidden', textOverflow:'ellipsis' }}>{cat.description || '—'}</td>
+                  <td style={{ ...T.td, maxWidth:'240px', overflow:'hidden', textOverflow:'ellipsis' }}>
+                    {cat.description || '—'}
+                  </td>
                   <td style={T.td}>{cat.company?.name || '—'}</td>
                   <td style={T.td}>
                     <span style={T.badge}>{cat._count?.products ?? 0} products</span>
@@ -155,10 +161,14 @@ export default function CategoriesPage() {
         )}
       </div>
 
-      <CategoryModal isOpen={showAdd} onClose={() => setShowAdd(false)} onSuccess={() => { refetch(); setShowAdd(false); }} companyId={user?.companyId}/>
+      <CategoryModal isOpen={showAdd} onClose={() => setShowAdd(false)} onSuccess={() => { refetch(); setShowAdd(false); }}/>
       <CategoryModal isOpen={!!editItem} onClose={() => setEditItem(null)} category={editItem} onSuccess={() => { refetch(); setEditItem(null); }}/>
-      <DeleteConfirmModal isOpen={!!deleteItem} onClose={() => setDeleteItem(null)} onConfirm={handleDelete} loading={deleting}
-        title="Delete Category" message={`Delete "${deleteItem?.name}"? Products in this category won't be deleted — they'll just become uncategorised.`}/>
+      <DeleteConfirmModal
+        isOpen={!!deleteItem} onClose={() => setDeleteItem(null)}
+        onConfirm={handleDelete} loading={deleting}
+        title="Delete Category"
+        message={`Delete "${deleteItem?.name}"? Products in this category won't be deleted — they'll just become uncategorised.`}
+      />
     </div>
   );
 }
