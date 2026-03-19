@@ -17,13 +17,47 @@ const schema = z.object({
   shopId:     z.string().optional(),
 });
 
+const PERMISSION_GROUPS = [
+  { label: 'Products',  keys: ['canViewProducts','canCreateProducts','canEditProducts','canDeleteProducts'] },
+  { label: 'Stock',     keys: ['canViewStock','canAddStock','canTransferStock'] },
+  { label: 'Returns',   keys: ['canViewReturns','canCreateReturns','canApproveReturns'] },
+  { label: 'Reports',   keys: ['canViewReports'] },
+  { label: 'Users',     keys: ['canViewUsers','canManageUsers'] },
+];
+
+const PERM_LABELS = {
+  canViewProducts:'View', canCreateProducts:'Create', canEditProducts:'Edit', canDeleteProducts:'Delete',
+  canViewStock:'View', canAddStock:'Add', canTransferStock:'Transfer',
+  canViewReturns:'View', canCreateReturns:'Create', canApproveReturns:'Approve',
+  canViewReports:'View Reports',
+  canViewUsers:'View', canManageUsers:'Manage',
+};
+
+const defaultPerms = (role) => ({
+  canViewProducts: true,
+  canCreateProducts: ['SUPER_ADMIN','COMPANY_ADMIN'].includes(role),
+  canEditProducts:   ['SUPER_ADMIN','COMPANY_ADMIN'].includes(role),
+  canDeleteProducts: ['SUPER_ADMIN','COMPANY_ADMIN'].includes(role),
+  canViewStock: true,
+  canAddStock:      ['SUPER_ADMIN','COMPANY_ADMIN','LOCATION_MANAGER','SHOP_OWNER'].includes(role),
+  canTransferStock: ['SUPER_ADMIN','COMPANY_ADMIN','LOCATION_MANAGER'].includes(role),
+  canViewReturns: true,
+  canCreateReturns:  ['SHOP_OWNER','SHOP_EMPLOYEE'].includes(role),
+  canApproveReturns: ['SUPER_ADMIN','COMPANY_ADMIN'].includes(role),
+  canViewReports: true,
+  canViewUsers:   ['SUPER_ADMIN','COMPANY_ADMIN','LOCATION_MANAGER'].includes(role),
+  canManageUsers: ['SUPER_ADMIN','COMPANY_ADMIN'].includes(role),
+});
+
 export default function AddUserModal({ isOpen, onClose, onSuccess }) {
   const { user: me } = useAuth();
-  const [companies, setCompanies] = useState([]);
-  const [locations, setLocations] = useState([]);
-  const [shops,     setShops]     = useState([]);
+  const isSuperAdmin = me?.role === 'SUPER_ADMIN';
+  const [companies,  setCompanies]  = useState([]);
+  const [locations,  setLocations]  = useState([]);
+  const [shops,      setShops]      = useState([]);
+  const [permissions, setPermissions] = useState(defaultPerms('SHOP_EMPLOYEE'));
 
-  const { register, handleSubmit, watch, formState: { errors, isSubmitting }, reset, setValue } = useForm({
+  const { register, handleSubmit, watch, formState:{ errors, isSubmitting }, reset, setValue } = useForm({
     resolver: zodResolver(schema),
     defaultValues: { email:'', password:'', name:'', role:'SHOP_EMPLOYEE', companyId:'', locationId:'', shopId:'' },
   });
@@ -32,33 +66,37 @@ export default function AddUserModal({ isOpen, onClose, onSuccess }) {
   const selectedCompany  = watch('companyId');
   const selectedLocation = watch('locationId');
 
-  useEffect(() => {
-    api.get('/companies').then(r => setCompanies(r.data)).catch(console.error);
-  }, []);
+  useEffect(() => { api.get('/companies').then(r => setCompanies(r.data)).catch(console.error); }, []);
 
   useEffect(() => {
     if (!isOpen) return;
     reset({ email:'', password:'', name:'', role:'SHOP_EMPLOYEE', companyId:'', locationId:'', shopId:'' });
+    setPermissions(defaultPerms('SHOP_EMPLOYEE'));
     if (me.role !== 'SUPER_ADMIN' && me.companyId) setValue('companyId', me.companyId);
   }, [isOpen, reset, setValue, me]);
 
+  // Auto-update permissions when role changes
   useEffect(() => {
-    if (selectedCompany) {
-      api.get(`/locations?companyId=${selectedCompany}`).then(r => setLocations(r.data)).catch(console.error);
-    } else { setLocations([]); }
+    if (selectedRole) setPermissions(defaultPerms(selectedRole));
+  }, [selectedRole]);
+
+  useEffect(() => {
+    if (selectedCompany) api.get(`/locations?companyId=${selectedCompany}`).then(r => setLocations(r.data)).catch(console.error);
+    else setLocations([]);
   }, [selectedCompany]);
 
   useEffect(() => {
-    if (selectedLocation) {
-      api.get(`/shops?locationId=${selectedLocation}`).then(r => setShops(r.data)).catch(console.error);
-    } else { setShops([]); }
+    if (selectedLocation) api.get(`/shops?locationId=${selectedLocation}`).then(r => setShops(r.data)).catch(console.error);
+    else setShops([]);
   }, [selectedLocation]);
+
+  const togglePerm = (key) => setPermissions(p => ({ ...p, [key]: !p[key] }));
 
   const handleClose = () => { reset(); onClose(); };
 
   const onSubmit = async (data) => {
     try {
-      await api.post('/users', data);
+      await api.post('/users', { ...data, permissions });
       toast.success('User created');
       reset();
       onSuccess();
@@ -68,13 +106,13 @@ export default function AddUserModal({ isOpen, onClose, onSuccess }) {
   const isCompanyLocked = me.role !== 'SUPER_ADMIN' && !!me.companyId;
 
   return (
-    <ModalShell isOpen={isOpen} onClose={handleClose} title="Add User">
+    <ModalShell isOpen={isOpen} onClose={handleClose} title="Add User" wide>
       <form onSubmit={handleSubmit(onSubmit)}>
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px' }}>
-          <Field label="Full Name" name="name" register={register} errors={errors} required />
-          <Field label="Email" name="email" type="email" register={register} errors={errors} required />
+          <Field label="Full Name" name="name" register={register} errors={errors} required/>
+          <Field label="Email" name="email" type="email" register={register} errors={errors} required/>
         </div>
-        <Field label="Password" name="password" type="password" register={register} errors={errors} required />
+        <Field label="Password" name="password" type="password" register={register} errors={errors} required/>
         <Select label="Role" name="role" register={register} errors={errors} required>
           <option value="SUPER_ADMIN">Super Admin</option>
           <option value="COMPANY_ADMIN">Company Admin</option>
@@ -100,6 +138,40 @@ export default function AddUserModal({ isOpen, onClose, onSuccess }) {
             {shops.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </Select>
         )}
+
+        {/* Permissions — only SUPER_ADMIN can customise */}
+        <div style={{ marginTop:'18px' }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'12px' }}>
+            <label style={M.label}>Permissions</label>
+            {!isSuperAdmin && (
+              <span style={{ fontSize:'11px', color:'var(--t3)', fontStyle:'italic' }}>
+                Auto-set by role · only Super Admin can customise
+              </span>
+            )}
+          </div>
+          <div style={{ background:'var(--bg-elevated)', border:'1px solid var(--border)', borderRadius:'10px', padding:'14px', display:'flex', flexDirection:'column', gap:'14px' }}>
+            {PERMISSION_GROUPS.map(group => (
+              <div key={group.label}>
+                <div style={{ fontSize:'11px', fontWeight:600, color:'var(--t3)', letterSpacing:'.06em', textTransform:'uppercase', marginBottom:'8px' }}>{group.label}</div>
+                <div style={{ display:'flex', flexWrap:'wrap', gap:'8px' }}>
+                  {group.keys.map(key => (
+                    <label key={key} style={{ display:'inline-flex', alignItems:'center', gap:'6px', cursor: isSuperAdmin ? 'pointer' : 'default', opacity: isSuperAdmin ? 1 : .7 }}>
+                      <input
+                        type="checkbox"
+                        checked={!!permissions[key]}
+                        onChange={() => isSuperAdmin && togglePerm(key)}
+                        disabled={!isSuperAdmin}
+                        style={{ accentColor:'var(--accent)', width:'14px', height:'14px' }}
+                      />
+                      <span style={{ fontSize:'12px', color:'var(--t2)' }}>{PERM_LABELS[key]}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
         <div style={M.footer}>
           <button type="button" onClick={handleClose} style={M.btnCancel}>Cancel</button>
           <button type="submit" disabled={isSubmitting} style={{ ...M.btnSubmit, opacity: isSubmitting ? .6 : 1 }}>
