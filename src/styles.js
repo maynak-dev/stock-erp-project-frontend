@@ -12,11 +12,11 @@ export const S = {
   // Top bar with title + button
   topBar: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' },
 
-  // Primary button
+  // Primary button — pink gradient matching app theme
   btnPrimary: {
     display: 'inline-flex', alignItems: 'center', gap: '6px',
     padding: '9px 16px',
-    background: 'linear-gradient(135deg, var(--accent), #8b83ff)',
+    background: 'linear-gradient(135deg, var(--accent), #FF72B2)',
     border: 'none', borderRadius: '9px',
     fontSize: '13px', fontWeight: 600, color: '#fff',
     cursor: 'pointer', fontFamily: 'Sora, sans-serif',
@@ -96,7 +96,7 @@ export const S = {
 export const modalStyles = {
   overlay: {
     position: 'fixed', inset: 0,
-    background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)',
+    background: 'rgba(13,26,46,0.50)', backdropFilter: 'blur(4px)',
     zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px',
   },
   panel: {
@@ -105,7 +105,7 @@ export const modalStyles = {
     borderRadius: '16px',
     padding: '28px',
     width: '100%', maxWidth: '460px',
-    boxShadow: '0 32px 80px rgba(0,0,0,0.7)',
+    boxShadow: '0 32px 80px rgba(13,26,46,0.25)',
     position: 'relative', zIndex: 51,
   },
   title: { fontSize: '16px', fontWeight: 700, color: 'var(--t1)', marginBottom: '20px' },
@@ -153,7 +153,7 @@ export const modalStyles = {
   },
   btnSubmit: {
     padding: '9px 20px', borderRadius: '9px',
-    background: 'linear-gradient(135deg, var(--accent), #8b83ff)',
+    background: 'linear-gradient(135deg, var(--accent), #FF72B2)',
     border: 'none', fontSize: '13px', fontWeight: 600, color: '#fff',
     cursor: 'pointer', fontFamily: 'Sora, sans-serif',
     boxShadow: '0 4px 14px var(--accent-g)',
